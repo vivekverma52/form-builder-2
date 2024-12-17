@@ -31,6 +31,7 @@ import {
 } from '@mui/material'
 import dynamic from 'next/dynamic'
 import React, { useCallback, useEffect, useState } from 'react'
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 // Add proper types for JsonForms props
 interface JsonFormsProps {
@@ -518,297 +519,344 @@ export default function Home() {
     }
   }, [navigateToForm]);
 
+  const theme = createTheme({
+    shape: {
+      borderRadius: 12
+    },
+    components: {
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: 12
+          }
+        }
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            borderRadius: 12
+          }
+        }
+      },
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8
+          }
+        }
+      },
+      MuiSelect: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8
+          }
+        }
+      },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 8
+            }
+          }
+        }
+      }
+    }
+  });
+
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Box display="flex" gap={4} minHeight="calc(100vh - 64px)">
-        <Paper sx={{ width: '50%', p: 3 }} elevation={2}>
-          <Typography variant="h5" gutterBottom fontWeight="bold">
-            Form Builder
-          </Typography>
-          {currentPath.length > 0 && (
-            <Button
-              startIcon={<ArrowBackIcon />}
-              onClick={navigateBack}
-              sx={{ mb: 2 }}
-            >
-              Back to {currentPath[currentPath.length - 1]?.parent?.label || 'Root'}
-            </Button>
-          )}
-          <Stack direction="row" spacing={2} mb={3}>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Form Type</InputLabel>
-              <Select
-                value={selectedType}
-                label="Form Type"
-                onChange={handleTypeChange}
+    <ThemeProvider theme={theme}>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box display="flex" gap={4} minHeight="calc(100vh - 64px)">
+          <Paper sx={{ width: '50%', p: 3 }} elevation={2}>
+            <Typography variant="h5" gutterBottom fontWeight="bold">
+              Form Builder
+            </Typography>
+            {currentPath.length > 0 && (
+              <Button
+                startIcon={<ArrowBackIcon />}
+                onClick={navigateBack}
+                sx={{ mb: 2 }}
               >
-                <MenuItem value="simple">Simple Form</MenuItem>
-                <MenuItem value="array">Array Form</MenuItem>
-                <MenuItem value="group">Group Form</MenuItem>
-              </Select>
-            </FormControl>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={addForm}
-            >
-              Add Form
-            </Button>
-          </Stack>
-          {currentPath.length > 0 && (
-            <Box mb={2}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Button
-                  size="small"
-                  onClick={() => setCurrentPath([])}
+                Back to {currentPath[currentPath.length - 1]?.parent?.label || 'Root'}
+              </Button>
+            )}
+            <Stack direction="row" spacing={2} mb={3}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Form Type</InputLabel>
+                <Select
+                  value={selectedType}
+                  label="Form Type"
+                  onChange={handleTypeChange}
                 >
-                  Root
-                </Button>
-                {currentPath.map((form, index) => (
-                  <React.Fragment key={form.key}>
-                    <Typography color="text.secondary">/</Typography>
-                    <Button
-                      size="small"
-                      onClick={() => setCurrentPath(currentPath.slice(0, index + 1))}
-                    >
-                      {form.label}
-                    </Button>
-                  </React.Fragment>
-                ))}
-              </Stack>
-            </Box>
-          )}
-          <Stack spacing={2}>
-            {getCurrentForms().map((form) => (
-              <Card key={form.key} variant="outlined">
-                <CardContent>
-                  {editingForm?.key === form.key ? (
-                    <Stack spacing={2}>
-                      <TextField
-                        label="Form Label"
-                        value={editingForm.label}
-                        onChange={(e) => setEditingForm({...editingForm, label: e.target.value})}
+                  <MenuItem value="simple">Simple Form</MenuItem>
+                  <MenuItem value="array">Array Form</MenuItem>
+                  <MenuItem value="group">Group Form</MenuItem>
+                </Select>
+              </FormControl>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={addForm}
+              >
+                Add Form
+              </Button>
+            </Stack>
+            {currentPath.length > 0 && (
+              <Box mb={2}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Button
+                    size="small"
+                    onClick={() => setCurrentPath([])}
+                  >
+                    Root
+                  </Button>
+                  {currentPath.map((form, index) => (
+                    <React.Fragment key={form.key}>
+                      <Typography color="text.secondary">/</Typography>
+                      <Button
                         size="small"
-                        fullWidth
-                      />
-                      <Stack direction="row" spacing={1}>
-                        <Button
-                          variant="contained"
-                          color="success"
-                          onClick={() => updateForm(editingForm)}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          onClick={() => setEditingForm(null)}
-                        >
-                          Cancel
-                        </Button>
+                        onClick={() => setCurrentPath(currentPath.slice(0, index + 1))}
+                      >
+                        {form.label}
+                      </Button>
+                    </React.Fragment>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+            <Stack spacing={2}>
+              {getCurrentForms().map((form) => (
+                <Card key={form.key} variant="outlined">
+                  <CardContent>
+                    {editingForm?.key === form.key ? (
+                      <Stack spacing={2}>
+                        <TextField
+                          label="Form Label"
+                          value={editingForm.label}
+                          onChange={(e) => setEditingForm({...editingForm, label: e.target.value})}
+                          size="small"
+                          fullWidth
+                        />
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            onClick={() => updateForm(editingForm)}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={() => setEditingForm(null)}
+                          >
+                            Cancel
+                          </Button>
+                        </Stack>
                       </Stack>
-                    </Stack>
-                  ) : (
-                    <Box>
-                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                        <Typography variant="subtitle1" fontWeight="medium">
-                          {form.label}
-                        </Typography>
-                        <Box>
-                          <FormControl size="small" sx={{ minWidth: 120, mr: 1 }}>
-                            <Select
-                              value={selectedElementType}
-                              onChange={handleElementTypeChange}
-                              size="small"
-                            >
-                              <MenuItem value="string">Text</MenuItem>
-                              <MenuItem value="number">Number</MenuItem>
-                              <MenuItem value="boolean">Boolean</MenuItem>
-                              <MenuItem value="date">Date</MenuItem>
-                              {(form.formType === 'array' || form.formType === 'group') && (
-                                <MenuItem value="object">Nested Form</MenuItem>
-                              )}
-                            </Select>
-                          </FormControl>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => addElement(form)}
-                          >
-                            <AddCircleIcon />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => setEditingForm(form)}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => deleteForm(form.key)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      </Box>
-                      <Typography variant="body2" color="text.secondary">
-                        Type: {form.type}
-                        {form.elements.length > 0 && ` (${form.elements.length} elements)`}
-                      </Typography>
-                      {form.elements.length > 0 && (
-                        <Box mt={2}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Elements:
+                    ) : (
+                      <Box>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                          <Typography variant="subtitle1" fontWeight="medium">
+                            {form.label}
                           </Typography>
-                          <Stack spacing={1}>
-                            {form.elements.map((element) => (
-                              <Card key={element.key} variant="outlined">
-                                <CardContent>
-                                  {editingElement?.key === element.key ? (
-                                    <Stack spacing={2}>
-                                      <TextField
-                                        label="Element Label"
-                                        value={editingElement.label}
-                                        onChange={(e) => setEditingElement({
-                                          ...editingElement,
-                                          label: e.target.value
-                                        })}
-                                        size="small"
-                                        fullWidth
-                                      />
-                                      <FormControlLabel
-                                        control={
-                                          <Checkbox
-                                            checked={editingElement.required}
-                                            onChange={(e) => setEditingElement({
-                                              ...editingElement,
-                                              required: e.target.checked
-                                            })}
-                                          />
-                                        }
-                                        label="Required"
-                                      />
-                                      <Stack direction="row" spacing={1}>
-                                        <Button
-                                          variant="contained"
-                                          color="success"
-                                          onClick={() => updateElement(form, editingElement)}
-                                        >
-                                          Save
-                                        </Button>
-                                        <Button
-                                          variant="outlined"
-                                          onClick={() => setEditingElement(null)}
-                                        >
-                                          Cancel
-                                        </Button>
+                          <Box>
+                            <FormControl size="small" sx={{ minWidth: 120, mr: 1 }}>
+                              <Select
+                                value={selectedElementType}
+                                onChange={handleElementTypeChange}
+                                size="small"
+                              >
+                                <MenuItem value="string">Text</MenuItem>
+                                <MenuItem value="number">Number</MenuItem>
+                                <MenuItem value="boolean">Boolean</MenuItem>
+                                <MenuItem value="date">Date</MenuItem>
+                                {(form.formType === 'array' || form.formType === 'group') && (
+                                  <MenuItem value="object">Nested Form</MenuItem>
+                                )}
+                              </Select>
+                            </FormControl>
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => addElement(form)}
+                            >
+                              <AddCircleIcon />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => setEditingForm(form)}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => deleteForm(form.key)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          Type: {form.type}
+                          {form.elements.length > 0 && ` (${form.elements.length} elements)`}
+                        </Typography>
+                        {form.elements.length > 0 && (
+                          <Box mt={2}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Elements:
+                            </Typography>
+                            <Stack spacing={1}>
+                              {form.elements.map((element) => (
+                                <Card key={element.key} variant="outlined">
+                                  <CardContent>
+                                    {editingElement?.key === element.key ? (
+                                      <Stack spacing={2}>
+                                        <TextField
+                                          label="Element Label"
+                                          value={editingElement.label}
+                                          onChange={(e) => setEditingElement({
+                                            ...editingElement,
+                                            label: e.target.value
+                                          })}
+                                          size="small"
+                                          fullWidth
+                                        />
+                                        <FormControlLabel
+                                          control={
+                                            <Checkbox
+                                              checked={editingElement.required}
+                                              onChange={(e) => setEditingElement({
+                                                ...editingElement,
+                                                required: e.target.checked
+                                              })}
+                                            />
+                                          }
+                                          label="Required"
+                                        />
+                                        <Stack direction="row" spacing={1}>
+                                          <Button
+                                            variant="contained"
+                                            color="success"
+                                            onClick={() => updateElement(form, editingElement)}
+                                          >
+                                            Save
+                                          </Button>
+                                          <Button
+                                            variant="outlined"
+                                            onClick={() => setEditingElement(null)}
+                                          >
+                                            Cancel
+                                          </Button>
+                                        </Stack>
                                       </Stack>
-                                    </Stack>
-                                  ) : (
-                                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                                      {element.type === 'object' ? (
-                                        <Box 
-                                          sx={{ 
-                                            cursor: 'pointer',
-                                            '&:hover': { color: 'primary.main' }
-                                          }}
-                                          onClick={() => handleElementClick(element)}
-                                        >
-                                          <Typography variant="body2" fontWeight="medium">
-                                            {element.label} (Nested Form)
-                                          </Typography>
-                                          <Typography variant="caption" color="text.secondary">
-                                            Type: {element.type}
-                                            {element.required && ' *'}
-                                          </Typography>
-                                        </Box>
-                                      ) : (
-                                        <Box display="flex" justifyContent="space-between" alignItems="center">
-                                          <Box>
+                                    ) : (
+                                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                                        {element.type === 'object' ? (
+                                          <Box 
+                                            sx={{ 
+                                              cursor: 'pointer',
+                                              '&:hover': { color: 'primary.main' }
+                                            }}
+                                            onClick={() => handleElementClick(element)}
+                                          >
                                             <Typography variant="body2" fontWeight="medium">
-                                              {element.label}
+                                              {element.label} (Nested Form)
                                             </Typography>
                                             <Typography variant="caption" color="text.secondary">
                                               Type: {element.type}
                                               {element.required && ' *'}
                                             </Typography>
                                           </Box>
-                                          <Box>
-                                            <IconButton
-                                              size="small"
-                                              color="primary"
-                                              onClick={() => setEditingElement(element)}
-                                            >
-                                              <EditIcon />
-                                            </IconButton>
-                                            <IconButton
-                                              size="small"
-                                              color="error"
-                                              onClick={() => deleteElement(form, element.key)}
-                                            >
-                                              <DeleteIcon />
-                                            </IconButton>
+                                        ) : (
+                                          <Box display="flex" justifyContent="space-between" alignItems="center">
+                                            <Box>
+                                              <Typography variant="body2" fontWeight="medium">
+                                                {element.label}
+                                              </Typography>
+                                              <Typography variant="caption" color="text.secondary">
+                                                Type: {element.type}
+                                                {element.required && ' *'}
+                                              </Typography>
+                                            </Box>
+                                            <Box>
+                                              <IconButton
+                                                size="small"
+                                                color="primary"
+                                                onClick={() => setEditingElement(element)}
+                                              >
+                                                <EditIcon />
+                                              </IconButton>
+                                              <IconButton
+                                                size="small"
+                                                color="error"
+                                                onClick={() => deleteElement(form, element.key)}
+                                              >
+                                                <DeleteIcon />
+                                              </IconButton>
+                                            </Box>
                                           </Box>
-                                        </Box>
-                                      )}
-                                    </Box>
-                                  )}
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </Stack>
-                        </Box>
-                      )}
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </Stack>
-        </Paper>
-        <Paper sx={{ width: '50%', p: 3 }} elevation={2}>
-          <Tabs value={previewTab} onChange={handleTabChange} sx={{ mb: 2 }}>
-            <Tab label="JSON Schema" />
-            <Tab label="Form Preview" />
-          </Tabs>
-          {previewTab === 0 ? (
-            <Paper
-              sx={{
-                p: 2,
-                bgcolor: 'grey.50',
-                fontFamily: 'monospace',
-                overflow: 'auto',
-                maxHeight: 'calc(100vh - 180px)'
-              }}
-              variant="outlined"
-            >
-              <pre>{JSON.stringify(schema, null, 2)}</pre>
-            </Paper>
-          ) : (
-            <Paper
-              sx={{
-                p: 2,
-                bgcolor: 'grey.50',
-                overflow: 'auto',
-                maxHeight: 'calc(100vh - 180px)'
-              }}
-              variant="outlined"
-            >
-              {isClient && renderers && cells && (
-                <JsonFormsComponent
-                  schema={schema}
-                  uischema={uiSchema}
-                  data={{}}
-                  renderers={renderers}
-                  cells={cells}
-                  onChange={handleFormChange}
-                />
-              )}
-            </Paper>
-          )}
-        </Paper>
-      </Box>
-    </Container>
+                                        )}
+                                      </Box>
+                                    )}
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </Stack>
+                          </Box>
+                        )}
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          </Paper>
+          <Paper sx={{ width: '50%', p: 3 }} elevation={2}>
+            <Tabs value={previewTab} onChange={handleTabChange} sx={{ mb: 2 }}>
+              <Tab label="JSON Schema" />
+              <Tab label="Form Preview" />
+            </Tabs>
+            {previewTab === 0 ? (
+              <Paper
+                sx={{
+                  p: 2,
+                  bgcolor: 'grey.50',
+                  fontFamily: 'monospace',
+                  overflow: 'auto',
+                  maxHeight: 'calc(100vh - 180px)'
+                }}
+                variant="outlined"
+              >
+                <pre>{JSON.stringify(schema, null, 2)}</pre>
+              </Paper>
+            ) : (
+              <Paper
+                sx={{
+                  p: 2,
+                  bgcolor: 'grey.50',
+                  overflow: 'auto',
+                  maxHeight: 'calc(100vh - 180px)'
+                }}
+                variant="outlined"
+              >
+                {isClient && renderers && cells && (
+                  <JsonFormsComponent
+                    schema={schema}
+                    uischema={uiSchema}
+                    data={{}}
+                    renderers={renderers}
+                    cells={cells}
+                    onChange={handleFormChange}
+                  />
+                )}
+              </Paper>
+            )}
+          </Paper>
+        </Box>
+      </Container>
+    </ThemeProvider>
   );
 }
