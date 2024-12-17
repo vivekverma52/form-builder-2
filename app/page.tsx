@@ -29,9 +29,9 @@ import {
   TextField,
   Typography
 } from '@mui/material'
+import { createTheme, ThemeProvider } from '@mui/material/styles'
 import dynamic from 'next/dynamic'
 import React, { useCallback, useEffect, useState } from 'react'
-import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 // Add proper types for JsonForms props
 interface JsonFormsProps {
@@ -758,17 +758,46 @@ export default function Home() {
                                           <Box 
                                             sx={{ 
                                               cursor: 'pointer',
-                                              '&:hover': { color: 'primary.main' }
+                                              '&:hover': { color: 'primary.main' },
+                                              display: 'flex',
+                                              justifyContent: 'space-between',
+                                              alignItems: 'center',
+                                              width: '100%'
                                             }}
-                                            onClick={() => handleElementClick(element)}
                                           >
-                                            <Typography variant="body2" fontWeight="medium">
-                                              {element.label} (Nested Form)
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                              Type: {element.type}
-                                              {element.required && ' *'}
-                                            </Typography>
+                                            <Box
+                                              onClick={() => handleElementClick(element)}
+                                            >
+                                              <Typography variant="body2" fontWeight="medium">
+                                                {element.label} (Nested Form)
+                                              </Typography>
+                                              <Typography variant="caption" color="text.secondary">
+                                                Type: {element.type}
+                                                {element.required && ' *'}
+                                              </Typography>
+                                            </Box>
+                                            <Box>
+                                              <IconButton
+                                                size="small"
+                                                color="primary"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setEditingElement(element);
+                                                }}
+                                              >
+                                                <EditIcon />
+                                              </IconButton>
+                                              <IconButton
+                                                size="small"
+                                                color="error"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  deleteElement(form, element.key);
+                                                }}
+                                              >
+                                                <DeleteIcon />
+                                              </IconButton>
+                                            </Box>
                                           </Box>
                                         ) : (
                                           <Box display="flex" justifyContent="space-between" alignItems="center">
