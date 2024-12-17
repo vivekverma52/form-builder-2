@@ -1,37 +1,36 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+import { JsonSchema7, UISchemaElement } from '@jsonforms/core'
+import {
+  AddCircle as AddCircleIcon,
+  Add as AddIcon,
+  ArrowBack as ArrowBackIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon
+} from '@mui/icons-material'
 import {
   Box,
-  Container,
-  Typography,
-  Select,
-  MenuItem,
   Button,
-  Paper,
-  TextField,
-  FormControl,
-  InputLabel,
-  Checkbox,
-  FormControlLabel,
-  IconButton,
   Card,
   CardContent,
+  Checkbox,
+  Container,
+  FormControl,
+  FormControlLabel,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  SelectChangeEvent,
   Stack,
-  Divider,
   Tab,
   Tabs,
-  SelectChangeEvent,
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  ArrowBack as ArrowBackIcon,
-  AddCircle as AddCircleIcon
-} from '@mui/icons-material';
-import { JsonSchema7, UISchemaElement } from '@jsonforms/core';
+  TextField,
+  Typography
+} from '@mui/material'
+import dynamic from 'next/dynamic'
+import React, { useCallback, useEffect, useState } from 'react'
 
 // Add proper types for JsonForms props
 interface JsonFormsProps {
@@ -308,11 +307,26 @@ export default function Home() {
           // For nested forms, generate their schema recursively
           const nestedForm = element.properties.form as FormField;
           acc[element.key] = generateFormSchema(nestedForm);
+        } else if (element.type === 'array') {
+          // For array types, create a simple array schema
+          acc[element.key] = {
+            type: 'array',
+            title: element.label,
+            items: {
+              type: 'string'
+            }
+          };
+        } else if (element.type === 'date') {
+          // For date types, use string type with date format
+          acc[element.key] = {
+            type: 'string',
+            format: 'date',
+            title: element.label
+          };
         } else {
           acc[element.key] = {
             type: element.type,
-            title: element.label,
-            ...element.properties
+            title: element.label
           };
         }
         return acc;
@@ -320,20 +334,30 @@ export default function Home() {
     };
 
     if (form.formType === 'simple' || form.formType === 'group') {
+      const properties = processElements(form.elements);
+      const required = form.elements
+        .filter(el => el.required)
+        .map(el => el.key);
+      
       return {
         type: 'object',
         title: form.label,
-        properties: processElements(form.elements),
-        required: form.elements.filter(el => el.required).map(el => el.key)
+        properties,
+        ...(required.length > 0 ? { required } : {})
       };
     } else if (form.formType === 'array') {
+      const properties = processElements(form.elements);
+      const required = form.elements
+        .filter(el => el.required)
+        .map(el => el.key);
+      
       return {
         type: 'array',
         title: form.label,
         items: {
           type: 'object',
-          properties: processElements(form.elements),
-          required: form.elements.filter(el => el.required).map(el => el.key)
+          properties,
+          ...(required.length > 0 ? { required } : {})
         }
       };
     }
@@ -390,18 +414,13 @@ export default function Home() {
         }
       } else {
         schema.properties[form.key] = formSchema;
+        if (form.elements.some(el => el.required)) {
+          schema.required.push(form.key);
+        }
       }
 
       // Mark this form as processed
       processedForms.add(form.key);
-
-      // Process required fields
-      if (!parentPath) {
-        const requiredFields = form.elements
-          .filter(el => el.required)
-          .map(el => `${form.key}.${el.key}`);
-        schema.required.push(...requiredFields);
-      }
 
       // Process nested forms
       form.elements.forEach(element => {
@@ -444,14 +463,19 @@ export default function Home() {
         
         if (value.type === 'object' && value.properties) {
           return {
-            type: 'Control',
-            scope,
-            options: {
-              detail: {
-                type: 'VerticalLayout',
-                elements: generateControlElements(value.properties, scope)
+            type: 'VerticalLayout',
+            elements: [
+              {
+                type: 'Control',
+                scope,
+                options: {
+                  detail: {
+                    type: 'VerticalLayout',
+                    elements: generateControlElements(value.properties, scope)
+                  }
+                }
               }
-            }
+            ]
           };
         }
         
