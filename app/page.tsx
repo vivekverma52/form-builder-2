@@ -888,6 +888,7 @@ export default function Home() {
           <Paper sx={{ width: '50%', p: 3 }} elevation={2}>
             <Tabs value={previewTab} onChange={handleTabChange} sx={{ mb: 2 }}>
               <Tab label="JSON Schema" />
+              <Tab label="UI Schema" />
               <Tab label="Form Preview" />
             </Tabs>
             {previewTab === 0 ? (
@@ -902,6 +903,19 @@ export default function Home() {
                 variant="outlined"
               >
                 <pre>{JSON.stringify(schema, null, 2)}</pre>
+              </Paper>
+            ) : previewTab === 1 ? (
+              <Paper
+                sx={{
+                  p: 2,
+                  bgcolor: 'grey.50',
+                  fontFamily: 'monospace',
+                  overflow: 'auto',
+                  maxHeight: 'calc(100vh - 180px)'
+                }}
+                variant="outlined"
+              >
+                <pre>{JSON.stringify(uiSchema, null, 2)}</pre>
               </Paper>
             ) : (
               <Paper
