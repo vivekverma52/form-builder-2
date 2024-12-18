@@ -270,7 +270,7 @@ export default function Home() {
     if (selectedElementType === 'object') {
       const newForm: FormField = {
         type: 'VerticalLayout',
-        formType: selectedType,
+        formType: 'group',
         label: generateElementName('object' as ElementType),
         key: generateKey('nested'),
         elements: [],
@@ -299,7 +299,7 @@ export default function Home() {
       setForms([...forms]);
       setEditingElement(newElement);
     }
-  }, [selectedElementType, selectedType, forms, generateKey, navigateToForm]);
+  }, [selectedElementType, forms, generateKey, navigateToForm]);
 
   const updateForm = useCallback((updatedForm: FormField): void => {
     setCurrentForms(
@@ -345,11 +345,9 @@ export default function Home() {
     const processElements = (elements: FormElement[]): Record<string, SchemaObject> => {
       return elements.reduce<Record<string, SchemaObject>>((acc, element) => {
         if (element.type === 'object' && element.properties?.form) {
-          // For nested forms, directly use their schema without additional wrapping
+          // For nested forms, generate their schema recursively
           const nestedForm = element.properties.form;
-          const nestedSchema = generateFormSchema(nestedForm);
-          // Merge the nested schema's properties directly
-          acc[element.key] = nestedSchema;
+          acc[element.key] = generateFormSchema(nestedForm);
         } else if (element.type === 'array') {
           // For array types, create a simple array schema
           acc[element.key] = {
@@ -556,27 +554,89 @@ export default function Home() {
   });
 
   const generateUiSchema = useCallback((schema: CustomJsonSchema): any => {
+    const cleanScopePath = (scope: string): string => {
+      if (!scope.startsWith('#/properties/')) return scope;
+      const parts = scope.split('/');
+      // If we have more than 3 parts (#, properties, elementKey), take the last one
+      return parts.length > 3 ? `#/properties/${parts[parts.length - 1]}` : scope;
+    };
+
+    const getGroupFormElements = (properties: Record<string, SchemaObject>, groupPath: string) => {
+      return Object.keys(properties).map(elemKey => ({
+        type: 'Control',
+        scope: `${groupPath}/properties/${elemKey}`
+      }));
+    };
+
     const processArrays = (schemaObj: SchemaObject, path: string = '', form?: FormField): any => {
       if (schemaObj.type === 'array' && schemaObj.items?.properties) {
-        // For array items, we need to use the properties from the items schema
-        const elements = Object.keys(schemaObj.items.properties).map(propKey => {
-          const itemProp = schemaObj.items?.properties?.[propKey];
-          if (itemProp?.type === 'array') {
-            // Handle nested arrays
-            return processArrays(itemProp, `#/properties/${propKey}`, form);
+        const elements = Object.entries(schemaObj.items.properties).map(([propKey, propValue]) => {
+          if (propValue.type === 'array') {
+            return processArrays(propValue, `#/properties/${propKey}`, form);
           }
-          if (itemProp?.type === 'object' && itemProp.properties) {
-            // Handle nested objects
+          if (propValue.type === 'object' && propValue.properties) {
+            // Find the nested form if it exists
+            const nestedForm = forms.find(f => f.key === propKey);
+            if (nestedForm?.formType === 'simple') {
+              return {
+                type: 'Control',
+                scope: `#/properties/${propKey}`,
+                options: {
+                  detail: {
+                    type: 'VerticalLayout',
+                    elements: getGroupFormElements(propValue.properties, `#/properties/${propKey}`)
+                  }
+                }
+              };
+            }
+            if (nestedForm?.formType === 'group') {
+              return {
+                type: 'Group',
+                label: nestedForm.label,
+                scope: `#/properties/${propKey}`,
+                elements: getGroupFormElements(propValue.properties, `#/properties/${propKey}`)
+              };
+            }
+            const nestedElements = Object.entries(propValue.properties).map(([nestedKey, nestedValue]) => {
+              if (nestedValue.type === 'array') {
+                return processArrays(nestedValue, `#/properties/${nestedKey}`, nestedForm);
+              }
+              if (nestedValue.type === 'object' && nestedValue.properties) {
+                const nestedNestedForm = forms.find(f => f.key === nestedKey);
+                if (nestedNestedForm?.formType === 'simple') {
+                  return {
+                    type: 'Control',
+                    scope: `#/properties/${nestedKey}`,
+                    options: {
+                      detail: {
+                        type: 'VerticalLayout',
+                        elements: getGroupFormElements(nestedValue.properties, `#/properties/${nestedKey}`)
+                      }
+                    }
+                  };
+                }
+                if (nestedNestedForm?.formType === 'group') {
+                  return {
+                    type: 'Group',
+                    label: nestedNestedForm.label,
+                    scope: `#/properties/${nestedKey}`,
+                    elements: getGroupFormElements(nestedValue.properties, `#/properties/${nestedKey}`)
+                  };
+                }
+                return processObject(nestedValue, `#/properties/${nestedKey}`, nestedNestedForm);
+              }
+              return {
+                type: 'Control',
+                scope: `#/properties/${nestedKey}`
+              };
+            });
             return {
               type: 'Control',
               scope: `#/properties/${propKey}`,
               options: {
                 detail: {
                   type: 'VerticalLayout',
-                  elements: Object.keys(itemProp.properties).map(nestedKey => ({
-                    type: 'Control',
-                    scope: `#/properties/${nestedKey}`
-                  }))
+                  elements: nestedElements
                 }
               }
             };
@@ -598,47 +658,57 @@ export default function Home() {
           }
         };
       }
+      return null;
+    };
 
+    const processObject = (schemaObj: SchemaObject, path: string = '', currentForm?: FormField): any => {
       if (schemaObj.type === 'object' && schemaObj.properties) {
-        const elements = Object.entries(schemaObj.properties)
-          .map(([key, prop]) => {
-            const newPath = path ? `${path}/${key}` : `#/properties/${key}`;
-            const nestedForm = forms.find(f => f.key === key);
-            
-            if (prop.type === 'array') {
-              return processArrays(prop, newPath, nestedForm);
-            }
-            if (prop.type === 'object' && prop.properties) {
-              // Handle nested objects
+        const elements = Object.entries(schemaObj.properties).map(([key, prop]) => {
+          const newPath = path ? `${path}/${key}` : `#/properties/${key}`;
+          const nestedForm = forms.find(f => f.key === key);
+          if (prop.type === 'array') {
+            return processArrays(prop, newPath, nestedForm);
+          }
+          if (prop.type === 'object' && prop.properties) {
+            if (nestedForm?.formType === 'simple') {
               return {
                 type: 'Control',
                 scope: newPath,
                 options: {
                   detail: {
                     type: 'VerticalLayout',
-                    elements: Object.keys(prop.properties).map(nestedKey => ({
-                      type: 'Control',
-                      scope: `#/properties/${nestedKey}`
-                    }))
+                    elements: getGroupFormElements(prop.properties, newPath)
                   }
                 }
               };
             }
-            return {
-              type: 'Control',
-              scope: newPath
-            };
-          })
-          .filter(Boolean);
-
-        if (elements.length > 0) {
+            if (nestedForm?.formType === 'group') {
+              return {
+                type: 'Group',
+                label: nestedForm.label,
+                scope: newPath,
+                elements: getGroupFormElements(prop.properties, newPath)
+              };
+            }
+            return processObject(prop, newPath, nestedForm);
+          }
           return {
-            type: 'VerticalLayout',
-            elements
+            type: 'Control',
+            scope: newPath
           };
-        }
-      }
+        });
 
+        return {
+          type: 'Control',
+          scope: path,
+          options: {
+            detail: {
+              type: 'VerticalLayout',
+              elements
+            }
+          }
+        };
+      }
       return null;
     };
 
@@ -646,24 +716,32 @@ export default function Home() {
       .map(([key, prop]) => {
         const path = `#/properties/${key}`;
         const form = forms.find(f => f.key === key);
+        
         if (prop.type === 'array') {
           return processArrays(prop, path, form);
         }
         if (prop.type === 'object' && prop.properties) {
-          // Handle root level objects
-          return {
-            type: 'Control',
-            scope: path,
-            options: {
-              detail: {
-                type: 'VerticalLayout',
-                elements: Object.keys(prop.properties).map(nestedKey => ({
-                  type: 'Control',
-                  scope: `#/properties/${nestedKey}`
-                }))
+          if (form?.formType === 'simple') {
+            return {
+              type: 'Control',
+              scope: path,
+              options: {
+                detail: {
+                  type: 'VerticalLayout',
+                  elements: getGroupFormElements(prop.properties, path)
+                }
               }
-            }
-          };
+            };
+          }
+          if (form?.formType === 'group') {
+            return {
+              type: 'Group',
+              label: form.label,
+              scope: path,
+              elements: getGroupFormElements(prop.properties, path)
+            };
+          }
+          return processObject(prop, path, form);
         }
         return {
           type: 'Control',
@@ -1062,3 +1140,4 @@ export default function Home() {
     </ThemeProvider>
   );
 }
+
