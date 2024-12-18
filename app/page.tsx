@@ -5,6 +5,7 @@ import {
   AddCircle as AddCircleIcon,
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
+  ContentCopy as ContentCopyIcon,
   Delete as DeleteIcon,
   Edit as EditIcon
 } from '@mui/icons-material'
@@ -37,6 +38,7 @@ import { adjectives, colors, Config, uniqueNamesGenerator } from 'unique-names-g
 // Add proper types for JsonForms props
 interface JsonFormsProps {
   schema: JsonSchema7;
+  uischema?: any;
   data: Record<string, unknown>;
   renderers: JsonFormsRendererRegistryEntry[];
   cells: JsonFormsCellRendererRegistryEntry[];
@@ -47,9 +49,10 @@ interface JsonFormsProps {
 const JsonFormsComponent = dynamic<JsonFormsProps>(
   () => import('@jsonforms/react').then(mod => {
     const { JsonForms } = mod;
-    const JsonFormsWrapper = ({ schema, data, renderers, cells, onChange }: JsonFormsProps) => (
+    const JsonFormsWrapper = ({ schema, uischema, data, renderers, cells, onChange }: JsonFormsProps) => (
       <JsonForms
         schema={schema}
+        uischema={uischema}
         data={data}
         renderers={renderers}
         cells={cells}
@@ -96,6 +99,7 @@ interface FormField {
   key: string;
   elements: FormElement[];
   parent?: FormField;
+  layout?: 'vertical' | 'horizontal';
 }
 
 interface SchemaObject {
@@ -240,7 +244,8 @@ export default function Home() {
       label: generateElementName(selectedType),
       key: generateKey(selectedType),
       elements: [],
-      parent: currentPath[currentPath.length - 1]
+      parent: currentPath[currentPath.length - 1],
+      layout: 'vertical'
     };
 
     if (currentPath.length === 0) {
@@ -340,9 +345,11 @@ export default function Home() {
     const processElements = (elements: FormElement[]): Record<string, SchemaObject> => {
       return elements.reduce<Record<string, SchemaObject>>((acc, element) => {
         if (element.type === 'object' && element.properties?.form) {
-          // For nested forms, generate their schema recursively
+          // For nested forms, directly use their schema without additional wrapping
           const nestedForm = element.properties.form;
-          acc[element.key] = generateFormSchema(nestedForm);
+          const nestedSchema = generateFormSchema(nestedForm);
+          // Merge the nested schema's properties directly
+          acc[element.key] = nestedSchema;
         } else if (element.type === 'array') {
           // For array types, create a simple array schema
           acc[element.key] = {
@@ -548,6 +555,129 @@ export default function Home() {
     }
   });
 
+  const generateUiSchema = useCallback((schema: CustomJsonSchema): any => {
+    const processArrays = (schemaObj: SchemaObject, path: string = '', form?: FormField): any => {
+      if (schemaObj.type === 'array' && schemaObj.items?.properties) {
+        // For array items, we need to use the properties from the items schema
+        const elements = Object.keys(schemaObj.items.properties).map(propKey => {
+          const itemProp = schemaObj.items?.properties?.[propKey];
+          if (itemProp?.type === 'array') {
+            // Handle nested arrays
+            return processArrays(itemProp, `#/properties/${propKey}`, form);
+          }
+          if (itemProp?.type === 'object' && itemProp.properties) {
+            // Handle nested objects
+            return {
+              type: 'Control',
+              scope: `#/properties/${propKey}`,
+              options: {
+                detail: {
+                  type: 'VerticalLayout',
+                  elements: Object.keys(itemProp.properties).map(nestedKey => ({
+                    type: 'Control',
+                    scope: `#/properties/${nestedKey}`
+                  }))
+                }
+              }
+            };
+          }
+          return {
+            type: 'Control',
+            scope: `#/properties/${propKey}`
+          };
+        });
+
+        return {
+          type: 'Control',
+          scope: path,
+          options: {
+            detail: {
+              type: form?.layout === 'horizontal' ? 'HorizontalLayout' : 'VerticalLayout',
+              elements
+            }
+          }
+        };
+      }
+
+      if (schemaObj.type === 'object' && schemaObj.properties) {
+        const elements = Object.entries(schemaObj.properties)
+          .map(([key, prop]) => {
+            const newPath = path ? `${path}/${key}` : `#/properties/${key}`;
+            const nestedForm = forms.find(f => f.key === key);
+            
+            if (prop.type === 'array') {
+              return processArrays(prop, newPath, nestedForm);
+            }
+            if (prop.type === 'object' && prop.properties) {
+              // Handle nested objects
+              return {
+                type: 'Control',
+                scope: newPath,
+                options: {
+                  detail: {
+                    type: 'VerticalLayout',
+                    elements: Object.keys(prop.properties).map(nestedKey => ({
+                      type: 'Control',
+                      scope: `#/properties/${nestedKey}`
+                    }))
+                  }
+                }
+              };
+            }
+            return {
+              type: 'Control',
+              scope: newPath
+            };
+          })
+          .filter(Boolean);
+
+        if (elements.length > 0) {
+          return {
+            type: 'VerticalLayout',
+            elements
+          };
+        }
+      }
+
+      return null;
+    };
+
+    const rootElements = Object.entries(schema.properties)
+      .map(([key, prop]) => {
+        const path = `#/properties/${key}`;
+        const form = forms.find(f => f.key === key);
+        if (prop.type === 'array') {
+          return processArrays(prop, path, form);
+        }
+        if (prop.type === 'object' && prop.properties) {
+          // Handle root level objects
+          return {
+            type: 'Control',
+            scope: path,
+            options: {
+              detail: {
+                type: 'VerticalLayout',
+                elements: Object.keys(prop.properties).map(nestedKey => ({
+                  type: 'Control',
+                  scope: `#/properties/${nestedKey}`
+                }))
+              }
+            }
+          };
+        }
+        return {
+          type: 'Control',
+          scope: path
+        };
+      })
+      .filter(Boolean);
+
+    return {
+      type: 'VerticalLayout',
+      elements: rootElements
+    };
+  }, [forms]);
+
   return (
     <ThemeProvider theme={theme}>
       <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -622,6 +752,19 @@ export default function Home() {
                           size="small"
                           fullWidth
                         />
+                        {editingForm.formType === 'array' && (
+                          <FormControl size="small" fullWidth>
+                            <InputLabel>Layout</InputLabel>
+                            <Select
+                              value={editingForm.layout || 'vertical'}
+                              label="Layout"
+                              onChange={(e) => setEditingForm({...editingForm, layout: e.target.value as 'vertical' | 'horizontal'})}
+                            >
+                              <MenuItem value="vertical">Vertical</MenuItem>
+                              <MenuItem value="horizontal">Horizontal</MenuItem>
+                            </Select>
+                          </FormControl>
+                        )}
                         <Stack direction="row" spacing={1}>
                           <Button
                             variant="contained"
@@ -842,6 +985,7 @@ export default function Home() {
           <Paper sx={{ width: '50%', p: 3 }} elevation={2}>
             <Tabs value={previewTab} onChange={handleTabChange} sx={{ mb: 2 }}>
               <Tab label="JSON Schema" />
+              <Tab label="UI Schema" />
               <Tab label="Form Preview" />
             </Tabs>
             {previewTab === 0 ? (
@@ -851,11 +995,44 @@ export default function Home() {
                   bgcolor: 'grey.50',
                   fontFamily: 'monospace',
                   overflow: 'auto',
-                  maxHeight: 'calc(100vh - 180px)'
+                  maxHeight: 'calc(100vh - 180px)',
+                  position: 'relative'
                 }}
                 variant="outlined"
               >
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<ContentCopyIcon />}
+                  onClick={() => navigator.clipboard.writeText(JSON.stringify(schema, null, 2))}
+                  sx={{ position: 'absolute', top: 8, right: 8 }}
+                >
+                  Copy
+                </Button>
                 <pre>{JSON.stringify(schema, null, 2)}</pre>
+              </Paper>
+            ) : previewTab === 1 ? (
+              <Paper
+                sx={{
+                  p: 2,
+                  bgcolor: 'grey.50',
+                  fontFamily: 'monospace',
+                  overflow: 'auto',
+                  maxHeight: 'calc(100vh - 180px)',
+                  position: 'relative'
+                }}
+                variant="outlined"
+              >
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<ContentCopyIcon />}
+                  onClick={() => navigator.clipboard.writeText(JSON.stringify(generateUiSchema(schema), null, 2))}
+                  sx={{ position: 'absolute', top: 8, right: 8 }}
+                >
+                  Copy
+                </Button>
+                <pre>{JSON.stringify(generateUiSchema(schema), null, 2)}</pre>
               </Paper>
             ) : (
               <Paper
@@ -870,6 +1047,7 @@ export default function Home() {
                 {isClient && renderers && cells && (
                   <JsonFormsComponent
                     schema={schema}
+                    uischema={generateUiSchema(schema)}
                     data={{}}
                     renderers={renderers}
                     cells={cells}
