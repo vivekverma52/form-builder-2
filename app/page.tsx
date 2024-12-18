@@ -37,7 +37,6 @@ import { uniqueNamesGenerator, adjectives, colors, Config } from 'unique-names-g
 // Add proper types for JsonForms props
 interface JsonFormsProps {
   schema: JsonSchema7;
-  uischema: CustomUISchema;
   data: Record<string, unknown>;
   renderers: JsonFormsRendererRegistryEntry[];
   cells: JsonFormsCellRendererRegistryEntry[];
@@ -48,10 +47,9 @@ interface JsonFormsProps {
 const JsonFormsComponent = dynamic<JsonFormsProps>(
   () => import('@jsonforms/react').then(mod => {
     const { JsonForms } = mod;
-    const JsonFormsWrapper = ({ schema, uischema, data, renderers, cells, onChange }: JsonFormsProps) => (
+    const JsonFormsWrapper = ({ schema, data, renderers, cells, onChange }: JsonFormsProps) => (
       <JsonForms
         schema={schema}
-        uischema={uischema}
         data={data}
         renderers={renderers}
         cells={cells}
@@ -480,63 +478,7 @@ export default function Home() {
     return schema;
   }, [forms, generateFormSchema]);
 
-  const generateUiSchema = useCallback((schema: CustomJsonSchema): CustomUISchema => {
-    const generateControlElements = (properties: Record<string, SchemaObject>, parentScope = ''): ExtendedUISchemaElement[] => {
-      const elements: ExtendedUISchemaElement[] = [];
-      
-      for (const [key, value] of Object.entries(properties)) {
-        const scope = parentScope ? `${parentScope}/${key}` : `#/properties/${key}`;
-        
-        if (value.type === 'array') {
-          elements.push({
-            type: 'Control',
-            scope,
-            options: {
-              detail: {
-                type: 'VerticalLayout',
-                elements: [
-                  {
-                    type: 'Control',
-                    scope: '#',
-                    elements: []
-                  }
-                ]
-              }
-            },
-            elements: []
-          });
-        } else if (value.type === 'object' && value.properties) {
-          elements.push({
-            type: 'Control',
-            scope,
-            options: {
-              detail: {
-                type: 'VerticalLayout',
-                elements: generateControlElements(value.properties, scope)
-              }
-            },
-            elements: []
-          });
-        } else {
-          elements.push({
-            type: 'Control',
-            scope,
-            elements: []
-          });
-        }
-      }
-      
-      return elements;
-    };
-
-    return {
-      type: 'VerticalLayout',
-      elements: generateControlElements(schema.properties)
-    } as CustomUISchema;
-  }, []);
-
   const schema = generateJsonSchema();
-  const uiSchema = generateUiSchema(schema);
 
   const handleTypeChange = useCallback((event: SelectChangeEvent<string>) => {
     setSelectedType(event.target.value as FormType);
@@ -871,7 +813,6 @@ export default function Home() {
           <Paper sx={{ width: '50%', p: 3 }} elevation={2}>
             <Tabs value={previewTab} onChange={handleTabChange} sx={{ mb: 2 }}>
               <Tab label="JSON Schema" />
-              <Tab label="UI Schema" />
               <Tab label="Form Preview" />
             </Tabs>
             {previewTab === 0 ? (
@@ -887,19 +828,6 @@ export default function Home() {
               >
                 <pre>{JSON.stringify(schema, null, 2)}</pre>
               </Paper>
-            ) : previewTab === 1 ? (
-              <Paper
-                sx={{
-                  p: 2,
-                  bgcolor: 'grey.50',
-                  fontFamily: 'monospace',
-                  overflow: 'auto',
-                  maxHeight: 'calc(100vh - 180px)'
-                }}
-                variant="outlined"
-              >
-                <pre>{JSON.stringify(uiSchema, null, 2)}</pre>
-              </Paper>
             ) : (
               <Paper
                 sx={{
@@ -913,7 +841,6 @@ export default function Home() {
                 {isClient && renderers && cells && (
                   <JsonFormsComponent
                     schema={schema}
-                    uischema={uiSchema}
                     data={{}}
                     renderers={renderers}
                     cells={cells}
