@@ -27,7 +27,8 @@ import {
   Tab,
   Tabs,
   TextField,
-  Typography
+  Typography,
+  Chip
 } from '@mui/material'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
 import dynamic from 'next/dynamic'
@@ -699,11 +700,25 @@ export default function Home() {
                     ) : (
                       <Box>
                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                          <Typography variant="subtitle1" fontWeight="medium">
-                            {form.label}
-                          </Typography>
                           <Box>
-                            <FormControl size="small" sx={{ minWidth: 120, mr: 1 }}>
+                            <Typography variant="subtitle1" fontWeight="medium">
+                              {form.label}
+                            </Typography>
+                            <Box display="flex" gap={1} mt={0.5}>
+                              <Chip
+                                size="small"
+                                label={form.formType}
+                                variant="outlined"
+                              />
+                              <Chip
+                                size="small"
+                                label={`${form.elements.length} elements`}
+                                variant="outlined"
+                              />
+                            </Box>
+                          </Box>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <FormControl size="small" sx={{ minWidth: 120 }}>
                               <Select
                                 value={selectedElementType}
                                 onChange={handleElementTypeChange}
@@ -718,27 +733,31 @@ export default function Home() {
                                 )}
                               </Select>
                             </FormControl>
-                            <IconButton
+                            <Button
                               size="small"
-                              color="primary"
+                              variant="outlined"
                               onClick={() => addElement(form)}
+                              sx={{ minWidth: 0, p: 1 }}
                             >
                               <AddCircleIcon />
-                            </IconButton>
-                            <IconButton
+                            </Button>
+                            <Button
                               size="small"
-                              color="primary"
+                              variant="outlined"
                               onClick={() => setEditingForm(form)}
+                              sx={{ minWidth: 0, p: 1 }}
                             >
                               <EditIcon />
-                            </IconButton>
-                            <IconButton
+                            </Button>
+                            <Button
                               size="small"
+                              variant="outlined"
                               color="error"
                               onClick={() => deleteForm(form.key)}
+                              sx={{ minWidth: 0, p: 1 }}
                             >
                               <DeleteIcon />
-                            </IconButton>
+                            </Button>
                           </Box>
                         </Box>
                         <Typography variant="body2" color="text.secondary">
@@ -796,80 +815,45 @@ export default function Home() {
                                       </Stack>
                                     ) : (
                                       <Box display="flex" justifyContent="space-between" alignItems="center">
-                                        {element.type === 'object' ? (
-                                          <Box 
-                                            sx={{ 
-                                              cursor: 'pointer',
-                                              '&:hover': { color: 'primary.main' },
-                                              display: 'flex',
-                                              justifyContent: 'space-between',
-                                              alignItems: 'center',
-                                              width: '100%'
-                                            }}
+                                        <Box>
+                                          <Typography variant="body2" fontWeight="medium">
+                                            {element.label}
+                                          </Typography>
+                                          <Box display="flex" gap={1} mt={0.5}>
+                                            <Chip
+                                              size="small"
+                                              label={element.type}
+                                              variant="outlined"
+                                            />
+                                            {element.required && (
+                                              <Chip
+                                                size="small"
+                                                label="Required"
+                                                color="primary"
+                                                variant="outlined"
+                                              />
+                                            )}
+                                          </Box>
+                                        </Box>
+                                        <Box>
+                                          <Button
+                                            size="small"
+                                            variant="outlined"
+                                            onClick={() => setEditingElement(element)}
+                                            sx={{ minWidth: 0, p: 1, mr: 1 }}
                                           >
-                                            <Box
-                                              onClick={() => handleElementClick(element)}
-                                            >
-                                              <Typography variant="body2" fontWeight="medium">
-                                                {element.label} (Nested Form)
-                                              </Typography>
-                                              <Typography variant="caption" color="text.secondary">
-                                                Type: {element.type}
-                                                {element.required && ' *'}
-                                              </Typography>
-                                            </Box>
-                                            <Box>
-                                              <IconButton
-                                                size="small"
-                                                color="primary"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setEditingElement(element);
-                                                }}
-                                              >
-                                                <EditIcon />
-                                              </IconButton>
-                                              <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  deleteElement(form, element.key);
-                                                }}
-                                              >
-                                                <DeleteIcon />
-                                              </IconButton>
-                                            </Box>
-                                          </Box>
-                                        ) : (
-                                          <Box display="flex" justifyContent="space-between" alignItems="center">
-                                            <Box>
-                                              <Typography variant="body2" fontWeight="medium">
-                                                {element.label}
-                                              </Typography>
-                                              <Typography variant="caption" color="text.secondary">
-                                                Type: {element.type}
-                                                {element.required && ' *'}
-                                              </Typography>
-                                            </Box>
-                                            <Box>
-                                              <IconButton
-                                                size="small"
-                                                color="primary"
-                                                onClick={() => setEditingElement(element)}
-                                              >
-                                                <EditIcon />
-                                              </IconButton>
-                                              <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={() => deleteElement(form, element.key)}
-                                              >
-                                                <DeleteIcon />
-                                              </IconButton>
-                                            </Box>
-                                          </Box>
-                                        )}
+                                            <EditIcon />
+                                          </Button>
+                                          <Button
+                                            size="small"
+                                            variant="outlined"
+                                            color="error"
+                                            onClick={() => deleteElement(form, element.key)}
+                                            sx={{ minWidth: 0, p: 1 }}
+                                          >
+                                            <DeleteIcon />
+                                          </Button>
+                                        </Box>
                                       </Box>
                                     )}
                                   </CardContent>
