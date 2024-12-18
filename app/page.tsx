@@ -760,12 +760,35 @@ export default function Home() {
                                           onClick={() => element.type === 'object' && handleElementClick(element)}
                                           sx={{ 
                                             cursor: element.type === 'object' ? 'pointer' : 'default',
-                                            '&:hover': element.type === 'object' ? { color: 'primary.main' } : {}
+                                            '&:hover': element.type === 'object' ? { 
+                                              color: 'primary.main',
+                                              '& .MuiChip-root': {
+                                                borderColor: 'primary.main',
+                                                color: 'primary.main'
+                                              }
+                                            } : {},
+                                            flex: 1,
+                                            mr: 2
                                           }}
                                         >
-                                          <Typography variant="body2" fontWeight="medium">
-                                            {element.label}
-                                          </Typography>
+                                          <Box display="flex" alignItems="center" gap={1}>
+                                            <Typography variant="body2" fontWeight="medium">
+                                              {element.label}
+                                            </Typography>
+                                            {element.type === 'object' && (
+                                              <Typography 
+                                                variant="caption" 
+                                                color="text.secondary"
+                                                sx={{ 
+                                                  display: 'flex', 
+                                                  alignItems: 'center',
+                                                  '& svg': { fontSize: 16, ml: 0.5 }
+                                                }}
+                                              >
+                                                (Click to open) <ArrowBackIcon sx={{ transform: 'rotate(180deg)' }} />
+                                              </Typography>
+                                            )}
+                                          </Box>
                                           <Box display="flex" gap={1} mt={0.5}>
                                             <Chip
                                               size="small"
