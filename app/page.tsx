@@ -17,7 +17,6 @@ import {
   Container,
   FormControl,
   FormControlLabel,
-  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -556,11 +555,11 @@ export default function Home() {
     console.log('Form errors:', state.errors);
   }, []);
 
-  const handleElementClick = useCallback((element: FormElement): void => {
-    if (element.type === 'object' && element.properties?.form) {
-      navigateToForm(element.properties.form as FormField);
-    }
-  }, [navigateToForm]);
+  // const handleElementClick = useCallback((element: FormElement): void => {
+  //   if (element.type === 'object' && element.properties?.form) {
+  //     navigateToForm(element.properties.form as FormField);
+  //   }
+  // }, [navigateToForm]);
 
   const theme = createTheme({
     shape: {
