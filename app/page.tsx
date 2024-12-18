@@ -32,6 +32,7 @@ import {
 import { createTheme, ThemeProvider } from '@mui/material/styles'
 import dynamic from 'next/dynamic'
 import React, { useCallback, useEffect, useState } from 'react'
+import { uniqueNamesGenerator, adjectives, colors, Config } from 'unique-names-generator';
 
 // Add proper types for JsonForms props
 interface JsonFormsProps {
@@ -64,8 +65,8 @@ const JsonFormsComponent = dynamic<JsonFormsProps>(
 );
 
 // Add proper types for renderers and cells
-type MaterialRenderer = any; // Replace with proper type from @jsonforms/material-renderers if available
-type MaterialCell = any; // Replace with proper type from @jsonforms/material-renderers if available
+// type MaterialRenderer = any; // Replace with proper type from @jsonforms/material-renderers if available
+// type MaterialCell = any; // Replace with proper type from @jsonforms/material-renderers if available
 
 let keyCounter = 0;
 const generateUniqueKey = (prefix: string) => {
@@ -140,6 +141,19 @@ interface FormChangeEvent {
     params: Record<string, unknown>;
   }>;
 }
+
+const generateElementName = (type: ElementType | FormType): string => {
+  const config: Config = {
+    dictionaries: [adjectives, colors],
+    separator: ' ',
+    style: 'capital'
+  };
+  const baseName = uniqueNamesGenerator(config);
+  const typeLabel = type === 'simple' || type === 'array' || type === 'group' 
+    ? 'Form'
+    : type.charAt(0).toUpperCase() + type.slice(1);
+  return `${baseName} ${typeLabel}`;
+};
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
@@ -225,7 +239,7 @@ export default function Home() {
     const newForm: FormField = {
       type: 'VerticalLayout',
       formType: selectedType,
-      label: `New ${selectedType} Form`,
+      label: generateElementName(selectedType),
       key: generateKey(selectedType),
       elements: [],
       parent: currentPath[currentPath.length - 1]
@@ -254,7 +268,7 @@ export default function Home() {
       const newForm: FormField = {
         type: 'VerticalLayout',
         formType: selectedType,
-        label: 'New Nested Form',
+        label: generateElementName('object' as ElementType),
         key: generateKey('nested'),
         elements: [],
         parent: form
@@ -274,7 +288,7 @@ export default function Home() {
     } else {
       const newElement: FormElement = {
         type: selectedElementType,
-        label: `New ${selectedElementType} Element`,
+        label: generateElementName(selectedElementType),
         key: generateKey(selectedElementType),
         required: false
       };
