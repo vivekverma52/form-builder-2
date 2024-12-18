@@ -1,6 +1,6 @@
 'use client';
 
-import { JsonSchema7, UISchemaElement, JsonFormsRendererRegistryEntry, JsonFormsCellRendererRegistryEntry } from '@jsonforms/core'
+import { JsonSchema7,  JsonFormsRendererRegistryEntry, JsonFormsCellRendererRegistryEntry } from '@jsonforms/core'
 import {
   AddCircle as AddCircleIcon,
   Add as AddIcon,
@@ -113,21 +113,21 @@ interface CustomJsonSchema extends JsonSchema7 {
 }
 
 // Update UISchemaElement type to include our custom properties
-interface ExtendedUISchemaElement extends UISchemaElement {
-  type: string;
-  scope?: string;
-  options?: {
-    detail?: {
-      type: string;
-      elements: ExtendedUISchemaElement[];
-    };
-  };
-  elements?: ExtendedUISchemaElement[];
-}
+// interface ExtendedUISchemaElement extends UISchemaElement {
+//   type: string;
+//   scope?: string;
+//   options?: {
+//     detail?: {
+//       type: string;
+//       elements: ExtendedUISchemaElement[];
+//     };
+//   };
+//   elements?: ExtendedUISchemaElement[];
+// }
 
-interface CustomUISchema extends ExtendedUISchemaElement {
-  elements: ExtendedUISchemaElement[];
-}
+// interface CustomUISchema extends ExtendedUISchemaElement {
+//   elements: ExtendedUISchemaElement[];
+// }
 
 interface FormChangeEvent {
   data: Record<string, unknown>;
