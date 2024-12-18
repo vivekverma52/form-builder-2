@@ -1,6 +1,6 @@
 'use client';
 
-import { JsonSchema7, UISchemaElement } from '@jsonforms/core'
+import { JsonSchema7, UISchemaElement, JsonFormsRendererRegistryEntry, JsonFormsCellRendererRegistryEntry } from '@jsonforms/core'
 import {
   AddCircle as AddCircleIcon,
   Add as AddIcon,
@@ -37,9 +37,9 @@ import React, { useCallback, useEffect, useState } from 'react'
 interface JsonFormsProps {
   schema: JsonSchema7;
   uischema: CustomUISchema;
-  data: Record<string, any>;
-  renderers: any[];
-  cells: any[];
+  data: Record<string, unknown>;
+  renderers: JsonFormsRendererRegistryEntry[];
+  cells: JsonFormsCellRendererRegistryEntry[];
   onChange: (state: FormChangeEvent) => void;
 }
 
@@ -47,7 +47,7 @@ interface JsonFormsProps {
 const JsonFormsComponent = dynamic<JsonFormsProps>(
   () => import('@jsonforms/react').then(mod => {
     const { JsonForms } = mod;
-    return ({ schema, uischema, data, renderers, cells, onChange }) => (
+    const JsonFormsWrapper = ({ schema, uischema, data, renderers, cells, onChange }: JsonFormsProps) => (
       <JsonForms
         schema={schema}
         uischema={uischema}
@@ -57,6 +57,8 @@ const JsonFormsComponent = dynamic<JsonFormsProps>(
         onChange={onChange}
       />
     );
+    JsonFormsWrapper.displayName = 'JsonFormsWrapper';
+    return JsonFormsWrapper;
   }),
   { ssr: false }
 );
@@ -81,7 +83,11 @@ interface FormElement {
   label: string;
   key: string;
   required?: boolean;
-  properties?: Record<string, any>;
+  properties?: {
+    form?: FormField;
+    type?: string;
+    [key: string]: unknown;
+  };
 }
 
 interface FormField {
@@ -93,25 +99,52 @@ interface FormField {
   parent?: FormField;
 }
 
-interface CustomJsonSchema extends Omit<JsonSchema7, 'properties'> {
-  properties: Record<string, any>;
+interface SchemaObject {
+  type: string;
+  title?: string;
+  properties?: Record<string, SchemaObject>;
+  items?: SchemaObject;
+  required?: string[];
+  format?: string;
+}
+
+interface CustomJsonSchema extends JsonSchema7 {
+  properties: Record<string, SchemaObject>;
   required: string[];
 }
 
-interface CustomUISchema {
+// Update UISchemaElement type to include our custom properties
+interface ExtendedUISchemaElement extends UISchemaElement {
   type: string;
-  elements: UISchemaElement[];
+  scope?: string;
+  options?: {
+    detail?: {
+      type: string;
+      elements: ExtendedUISchemaElement[];
+    };
+  };
+  elements?: ExtendedUISchemaElement[];
+}
+
+interface CustomUISchema extends ExtendedUISchemaElement {
+  elements: ExtendedUISchemaElement[];
 }
 
 interface FormChangeEvent {
-  data: any;
-  errors: any[];
+  data: Record<string, unknown>;
+  errors: Array<{
+    instancePath: string;
+    message?: string;
+    schemaPath: string;
+    keyword: string;
+    params: Record<string, unknown>;
+  }>;
 }
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
-  const [renderers, setRenderers] = useState<MaterialRenderer[]>([]);
-  const [cells, setCells] = useState<MaterialCell[]>([]);
+  const [renderers, setRenderers] = useState<JsonFormsRendererRegistryEntry[]>([]);
+  const [cells, setCells] = useState<JsonFormsCellRendererRegistryEntry[]>([]);
   const [forms, setForms] = useState<FormField[]>([]);
   const [selectedType, setSelectedType] = useState<FormType>('simple');
   const [selectedElementType, setSelectedElementType] = useState<ElementType>('string');
@@ -172,7 +205,8 @@ export default function Home() {
     // Convert FormFields to FormElements
     const newElements = lastForm.elements.map(element => {
       if (element.type === 'object' && element.properties?.form) {
-        const updatedForm = newForms.find(form => form.key === element.properties?.form.key);
+        const form = element.properties.form;
+        const updatedForm = newForms.find(newForm => newForm.key === form?.key);
         if (updatedForm) {
           return {
             ...element,
@@ -290,23 +324,12 @@ export default function Home() {
     }
   }, [forms, editingElement]);
 
-  const generateElementSchema = useCallback((element: FormElement, formSchemaGenerator: (form: FormField) => any): any => {
-    if (element.type === 'object' && element.properties?.form) {
-      return formSchemaGenerator(element.properties.form as FormField);
-    }
-    return {
-      type: element.type,
-      title: element.label,
-      ...element.properties
-    };
-  }, []);
-
-  const generateFormSchema = useCallback((form: FormField): any => {
-    const processElements = (elements: FormElement[]) => {
-      return elements.reduce<Record<string, any>>((acc, element) => {
+  const generateFormSchema = useCallback((form: FormField): SchemaObject => {
+    const processElements = (elements: FormElement[]): Record<string, SchemaObject> => {
+      return elements.reduce<Record<string, SchemaObject>>((acc, element) => {
         if (element.type === 'object' && element.properties?.form) {
           // For nested forms, generate their schema recursively
-          const nestedForm = element.properties.form as FormField;
+          const nestedForm = element.properties.form;
           acc[element.key] = generateFormSchema(nestedForm);
         } else if (element.type === 'array') {
           // For array types, create a simple array schema
@@ -362,7 +385,11 @@ export default function Home() {
         }
       };
     }
-    return null;
+    
+    return {
+      type: 'object',
+      properties: {}
+    };
   }, []);
 
   const generateJsonSchema = useCallback((): CustomJsonSchema => {
@@ -392,23 +419,23 @@ export default function Home() {
       if (parentPath) {
         // Split the parent path to navigate the schema
         const pathParts = parentPath.split('.');
-        let currentObj = schema.properties;
+        let currentObj: Record<string, SchemaObject> = schema.properties;
         
         // Navigate to the correct location in the schema
         for (let i = 0; i < pathParts.length; i++) {
           const part = pathParts[i];
           if (i === pathParts.length - 1) {
             // Last part - this is where we add the new form
-            if (currentObj[part].type === 'array') {
+            if (currentObj[part]?.type === 'array' && currentObj[part].items?.properties) {
               currentObj[part].items.properties[form.key] = formSchema;
-            } else {
+            } else if (currentObj[part]?.properties) {
               currentObj[part].properties[form.key] = formSchema;
             }
           } else {
             // Navigate through the schema
-            if (currentObj[part].type === 'array') {
+            if (currentObj[part]?.type === 'array' && currentObj[part].items?.properties) {
               currentObj = currentObj[part].items.properties;
-            } else {
+            } else if (currentObj[part]?.properties) {
               currentObj = currentObj[part].properties;
             }
           }
@@ -440,12 +467,14 @@ export default function Home() {
   }, [forms, generateFormSchema]);
 
   const generateUiSchema = useCallback((schema: CustomJsonSchema): CustomUISchema => {
-    const generateControlElements = (properties: Record<string, any>, parentScope = ''): UISchemaElement[] => {
-      return Object.entries(properties).map(([key, value]) => {
+    const generateControlElements = (properties: Record<string, SchemaObject>, parentScope = ''): ExtendedUISchemaElement[] => {
+      const elements: ExtendedUISchemaElement[] = [];
+      
+      for (const [key, value] of Object.entries(properties)) {
         const scope = parentScope ? `${parentScope}/${key}` : `#/properties/${key}`;
         
         if (value.type === 'array') {
-          return {
+          elements.push({
             type: 'Control',
             scope,
             options: {
@@ -454,43 +483,42 @@ export default function Home() {
                 elements: [
                   {
                     type: 'Control',
-                    scope: '#'
+                    scope: '#',
+                    elements: []
                   }
                 ]
               }
-            }
-          };
-        }
-        
-        if (value.type === 'object' && value.properties) {
-          return {
-            type: 'VerticalLayout',
-            elements: [
-              {
-                type: 'Control',
-                scope,
-                options: {
-                  detail: {
-                    type: 'VerticalLayout',
-                    elements: generateControlElements(value.properties, scope)
-                  }
-                }
+            },
+            elements: []
+          });
+        } else if (value.type === 'object' && value.properties) {
+          elements.push({
+            type: 'Control',
+            scope,
+            options: {
+              detail: {
+                type: 'VerticalLayout',
+                elements: generateControlElements(value.properties, scope)
               }
-            ]
-          };
+            },
+            elements: []
+          });
+        } else {
+          elements.push({
+            type: 'Control',
+            scope,
+            elements: []
+          });
         }
-        
-        return {
-          type: 'Control',
-          scope
-        };
-      });
+      }
+      
+      return elements;
     };
 
     return {
       type: 'VerticalLayout',
       elements: generateControlElements(schema.properties)
-    };
+    } as CustomUISchema;
   }, []);
 
   const schema = generateJsonSchema();
