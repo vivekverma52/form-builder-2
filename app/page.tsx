@@ -1,6 +1,6 @@
 'use client';
 
-import { JsonSchema7,  JsonFormsRendererRegistryEntry, JsonFormsCellRendererRegistryEntry } from '@jsonforms/core'
+import { JsonFormsCellRendererRegistryEntry, JsonFormsRendererRegistryEntry, JsonSchema7 } from '@jsonforms/core'
 import {
   AddCircle as AddCircleIcon,
   Add as AddIcon,
@@ -14,6 +14,7 @@ import {
   Card,
   CardContent,
   Checkbox,
+  Chip,
   Container,
   FormControl,
   FormControlLabel,
@@ -26,13 +27,12 @@ import {
   Tab,
   Tabs,
   TextField,
-  Typography,
-  Chip
+  Typography
 } from '@mui/material'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
 import dynamic from 'next/dynamic'
 import React, { useCallback, useEffect, useState } from 'react'
-import { uniqueNamesGenerator, adjectives, colors, Config } from 'unique-names-generator';
+import { adjectives, colors, Config, uniqueNamesGenerator } from 'unique-names-generator'
 
 // Add proper types for JsonForms props
 interface JsonFormsProps {
@@ -497,11 +497,11 @@ export default function Home() {
     console.log('Form errors:', state.errors);
   }, []);
 
-  // const handleElementClick = useCallback((element: FormElement): void => {
-  //   if (element.type === 'object' && element.properties?.form) {
-  //     navigateToForm(element.properties.form as FormField);
-  //   }
-  // }, [navigateToForm]);
+  const handleElementClick = useCallback((element: FormElement): void => {
+    if (element.type === 'object' && element.properties?.form) {
+      navigateToForm(element.properties.form as FormField);
+    }
+  }, [navigateToForm]);
 
   const theme = createTheme({
     shape: {
@@ -756,14 +756,20 @@ export default function Home() {
                                       </Stack>
                                     ) : (
                                       <Box display="flex" justifyContent="space-between" alignItems="center">
-                                        <Box>
+                                        <Box 
+                                          onClick={() => element.type === 'object' && handleElementClick(element)}
+                                          sx={{ 
+                                            cursor: element.type === 'object' ? 'pointer' : 'default',
+                                            '&:hover': element.type === 'object' ? { color: 'primary.main' } : {}
+                                          }}
+                                        >
                                           <Typography variant="body2" fontWeight="medium">
                                             {element.label}
                                           </Typography>
                                           <Box display="flex" gap={1} mt={0.5}>
                                             <Chip
                                               size="small"
-                                              label={element.type}
+                                              label={`${element.type.charAt(0).toUpperCase() + element.type.slice(1)} Field`}
                                               variant="outlined"
                                             />
                                             {element.required && (
