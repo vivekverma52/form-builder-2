@@ -70,11 +70,7 @@ const JsonFormsComponent = dynamic<JsonFormsProps>(
 // type MaterialRenderer = any; // Replace with proper type from @jsonforms/material-renderers if available
 // type MaterialCell = any; // Replace with proper type from @jsonforms/material-renderers if available
 
-let keyCounter = 0;
-const generateUniqueKey = (prefix: string) => {
-  keyCounter += 1;
-  return `${prefix}_${keyCounter}`;
-};
+
 
 // Form types
 type FormLayoutType = 'VerticalLayout' | 'HorizontalLayout' | 'Group' | 'Control';
@@ -145,7 +141,16 @@ interface FormChangeEvent {
   }>;
 }
 
-const generateElementName = (type: ElementType | FormType): string => {
+const generateHexFromString = (str: string): string => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16).substring(0, 6);
+};
+
+const generateElementName = (type: ElementType | FormType): { label: string, key: string } => {
   const config: Config = {
     dictionaries: [adjectives, colors],
     separator: ' ',
@@ -155,7 +160,9 @@ const generateElementName = (type: ElementType | FormType): string => {
   const typeLabel = type === 'simple' || type === 'array' || type === 'group' 
     ? 'Form'
     : type.charAt(0).toUpperCase() + type.slice(1);
-  return `${baseName} ${typeLabel}`;
+  const label = `${baseName} ${typeLabel}`;
+  const key = `${label.toLowerCase().replace(/\s+/g, '-')}-${generateHexFromString(label)}`;
+  return { label, key };
 };
 
 export default function Home() {
@@ -182,9 +189,9 @@ export default function Home() {
     });
   }, []);
 
-  const generateKey = useCallback((prefix: string): string => {
-    return generateUniqueKey(prefix);
-  }, []);
+  // const generateKey = useCallback((prefix: string): string => {
+  //   return generateUniqueKey(prefix);
+  // }, []);
 
   const navigateToForm = useCallback((form: FormField): void => {
     setCurrentPath([...currentPath, form]);
@@ -239,11 +246,12 @@ export default function Home() {
   }, [currentPath, forms]);
 
   const addForm = useCallback((): void => {
+    const { label, key } = generateElementName(selectedType);
     const newForm: FormField = {
       type: 'VerticalLayout',
       formType: selectedType,
-      label: generateElementName(selectedType),
-      key: generateKey(selectedType),
+      label,
+      key,
       elements: [],
       parent: currentPath[currentPath.length - 1],
       layout: 'vertical'
@@ -255,8 +263,8 @@ export default function Home() {
       const lastForm = currentPath[currentPath.length - 1];
       const newElement: FormElement = {
         type: 'object',
-        label: newForm.label,
-        key: newForm.key,
+        label,
+        key,
         properties: {
           form: newForm
         }
@@ -265,22 +273,23 @@ export default function Home() {
       setForms([...forms]);
     }
     setEditingForm(newForm);
-  }, [selectedType, currentPath, forms, generateKey]);
+  }, [selectedType, currentPath, forms]);
 
   const addElement = useCallback((form: FormField): void => {
     if (selectedElementType === 'object') {
+      const { label, key } = generateElementName('object' as ElementType);
       const newForm: FormField = {
         type: 'VerticalLayout',
         formType: 'group',
-        label: generateElementName('object' as ElementType),
-        key: generateKey('nested'),
+        label,
+        key,
         elements: [],
         parent: form
       };
       const newElement: FormElement = {
         type: 'object',
-        label: newForm.label,
-        key: newForm.key,
+        label,
+        key,
         properties: {
           type: 'object',
           form: newForm
@@ -290,22 +299,29 @@ export default function Home() {
       setForms([...forms]);
       navigateToForm(newForm);
     } else {
+      const { label, key } = generateElementName(selectedElementType);
       const newElement: FormElement = {
         type: selectedElementType,
-        label: generateElementName(selectedElementType),
-        key: generateKey(selectedElementType),
+        label,
+        key,
         required: false
       };
       form.elements = [...form.elements, newElement];
       setForms([...forms]);
       setEditingElement(newElement);
     }
-  }, [selectedElementType, forms, generateKey, navigateToForm]);
+  }, [selectedElementType, forms, navigateToForm]);
 
   const updateForm = useCallback((updatedForm: FormField): void => {
+    const newKey = `${updatedForm.label.toLowerCase().replace(/\s+/g, '-')}-${generateHexFromString(updatedForm.label)}`;
+    const formWithNewKey = {
+      ...updatedForm,
+      key: newKey
+    };
+
     setCurrentForms(
       getCurrentForms().map(form => 
-        form.key === updatedForm.key ? updatedForm : form
+        form.key === updatedForm.key ? formWithNewKey : form
       )
     );
     setEditingForm(null);
