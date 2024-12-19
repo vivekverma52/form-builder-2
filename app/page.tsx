@@ -568,6 +568,13 @@ export default function Home() {
       }));
     };
 
+    const getSimpleFormElements = (properties: Record<string, SchemaObject>) => {
+      return Object.keys(properties).map(elemKey => ({
+        type: 'Control',
+        scope: cleanScopePath(`#/properties/${elemKey}`)
+      }));
+    };
+
     const processArrays = (schemaObj: SchemaObject, path: string = '', form?: FormField): any => {
       if (schemaObj.type === 'array' && schemaObj.items?.properties) {
         const elements = Object.entries(schemaObj.items.properties).map(([propKey, propValue]) => {
@@ -580,11 +587,11 @@ export default function Home() {
             if (nestedForm?.formType === 'simple') {
               return {
                 type: 'Control',
-                scope: `#/properties/${propKey}`,
+                scope: cleanScopePath(`#/properties/${propKey}`),
                 options: {
                   detail: {
                     type: 'VerticalLayout',
-                    elements: getGroupFormElements(propValue.properties, `#/properties/${propKey}`)
+                    elements: getSimpleFormElements(propValue.properties)
                   }
                 }
               };
@@ -606,11 +613,11 @@ export default function Home() {
                 if (nestedNestedForm?.formType === 'simple') {
                   return {
                     type: 'Control',
-                    scope: `#/properties/${nestedKey}`,
+                    scope: cleanScopePath(`#/properties/${nestedKey}`),
                     options: {
                       detail: {
                         type: 'VerticalLayout',
-                        elements: getGroupFormElements(nestedValue.properties, `#/properties/${nestedKey}`)
+                        elements: getSimpleFormElements(nestedValue.properties)
                       }
                     }
                   };
@@ -627,12 +634,12 @@ export default function Home() {
               }
               return {
                 type: 'Control',
-                scope: `#/properties/${nestedKey}`
+                scope: cleanScopePath(`#/properties/${nestedKey}`)
               };
             });
             return {
               type: 'Control',
-              scope: `#/properties/${propKey}`,
+              scope: cleanScopePath(`#/properties/${propKey}`),
               options: {
                 detail: {
                   type: 'VerticalLayout',
@@ -643,13 +650,13 @@ export default function Home() {
           }
           return {
             type: 'Control',
-            scope: `#/properties/${propKey}`
+            scope: cleanScopePath(`#/properties/${propKey}`)
           };
         });
 
         return {
           type: 'Control',
-          scope: path,
+          scope: cleanScopePath(path),
           options: {
             detail: {
               type: form?.layout === 'horizontal' ? 'HorizontalLayout' : 'VerticalLayout',
@@ -673,11 +680,11 @@ export default function Home() {
             if (nestedForm?.formType === 'simple') {
               return {
                 type: 'Control',
-                scope: newPath,
+                scope: cleanScopePath(newPath),
                 options: {
                   detail: {
                     type: 'VerticalLayout',
-                    elements: getGroupFormElements(prop.properties, newPath)
+                    elements: getSimpleFormElements(prop.properties)
                   }
                 }
               };
@@ -694,13 +701,33 @@ export default function Home() {
           }
           return {
             type: 'Control',
-            scope: newPath
+            scope: cleanScopePath(newPath)
           };
         });
 
+        if (currentForm?.formType === 'group') {
+          return {
+            type: 'Group',
+            label: currentForm.label,
+            scope: path,
+            elements
+          };
+        }
+        if (currentForm?.formType === 'simple') {
+          return {
+            type: 'Control',
+            scope: cleanScopePath(path),
+            options: {
+              detail: {
+                type: 'VerticalLayout',
+                elements
+              }
+            }
+          };
+        }
         return {
           type: 'Control',
-          scope: path,
+          scope: cleanScopePath(path),
           options: {
             detail: {
               type: 'VerticalLayout',
@@ -724,11 +751,11 @@ export default function Home() {
           if (form?.formType === 'simple') {
             return {
               type: 'Control',
-              scope: path,
+              scope: cleanScopePath(path),
               options: {
                 detail: {
                   type: 'VerticalLayout',
-                  elements: getGroupFormElements(prop.properties, path)
+                  elements: getSimpleFormElements(prop.properties)
                 }
               }
             };
@@ -745,7 +772,7 @@ export default function Home() {
         }
         return {
           type: 'Control',
-          scope: path
+          scope: cleanScopePath(path)
         };
       })
       .filter(Boolean);
