@@ -216,33 +216,33 @@ export default function Home() {
     return [];
   }, [currentPath, forms]);
 
-  const setCurrentForms = useCallback((newForms: FormField[]): void => {
-    if (currentPath.length === 0) {
-      setForms(newForms);
-      return;
-    }
+  // const setCurrentForms = useCallback((newForms: FormField[]): void => {
+  //   if (currentPath.length === 0) {
+  //     setForms(newForms);
+  //     return;
+  //   }
 
-    // Get the last form in the path
-    const lastForm = currentPath[currentPath.length - 1];
+  //   // Get the last form in the path
+  //   const lastForm = currentPath[currentPath.length - 1];
     
-    // Convert FormFields to FormElements
-    const newElements = lastForm.elements.map(element => {
-      if (element.type === 'object' && element.properties?.form) {
-        const form = element.properties.form;
-        const updatedForm = newForms.find(newForm => newForm.key === form?.key);
-        if (updatedForm) {
-          return {
-            ...element,
-            properties: { ...element.properties, form: updatedForm }
-          };
-        }
-      }
-      return element;
-    });
+  //   // Convert FormFields to FormElements
+  //   const newElements = lastForm.elements.map(element => {
+  //     if (element.type === 'object' && element.properties?.form) {
+  //       const form = element.properties.form;
+  //       const updatedForm = newForms.find(newForm => newForm.key === form?.key);
+  //       if (updatedForm) {
+  //         return {
+  //           ...element,
+  //           properties: { ...element.properties, form: updatedForm }
+  //         };
+  //       }
+  //     }
+  //     return element;
+  //   });
     
-    lastForm.elements = newElements;
-    setForms([...forms]);
-  }, [currentPath, forms]);
+  //   lastForm.elements = newElements;
+  //   setForms([...forms]);
+  // }, [currentPath, forms]);
 
   const addForm = useCallback((): void => {
     const { label, key } = generateElementName(selectedType);
@@ -370,7 +370,7 @@ export default function Home() {
     );
     setForms([...forms]);
     setEditingElement(null);
-  }, [forms, editingElement]);
+  }, [forms]);
 
   const deleteForm = useCallback((key: string): void => {
     if (currentPath.length === 0) {
