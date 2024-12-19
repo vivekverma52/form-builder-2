@@ -34,11 +34,12 @@ import { createTheme, ThemeProvider } from '@mui/material/styles'
 import dynamic from 'next/dynamic'
 import React, { useCallback, useEffect, useState } from 'react'
 import { adjectives, colors, Config, uniqueNamesGenerator } from 'unique-names-generator'
+import { UISchemaElement } from '@jsonforms/core';
 
 // Add proper types for JsonForms props
 interface JsonFormsProps {
   schema: JsonSchema7;
-  uischema?: any;
+  uischema?: UISchemaElement;
   data: Record<string, unknown>;
   renderers: JsonFormsRendererRegistryEntry[];
   cells: JsonFormsCellRendererRegistryEntry[];
@@ -553,7 +554,7 @@ export default function Home() {
     }
   });
 
-  const generateUiSchema = useCallback((schema: CustomJsonSchema): any => {
+  const generateUiSchema = useCallback((schema: CustomJsonSchema): UISchemaElement => {
     const cleanScopePath = (scope: string): string => {
       if (!scope.startsWith('#/properties/')) return scope;
       const parts = scope.split('/');
@@ -575,7 +576,7 @@ export default function Home() {
       }));
     };
 
-    const processArrays = (schemaObj: SchemaObject, path: string = '', form?: FormField): any => {
+    const processArrays = (schemaObj: SchemaObject, path: string = '', form?: FormField): UISchemaElement | unknown => {
       if (schemaObj.type === 'array' && schemaObj.items?.properties) {
         const elements = Object.entries(schemaObj.items.properties).map(([propKey, propValue]) => {
           if (propValue.type === 'array') {
@@ -668,7 +669,7 @@ export default function Home() {
       return null;
     };
 
-    const processObject = (schemaObj: SchemaObject, path: string = '', currentForm?: FormField): any => {
+    const processObject = (schemaObj: SchemaObject, path: string = '', currentForm?: FormField): UISchemaElement | unknown => {
       if (schemaObj.type === 'object' && schemaObj.properties) {
         const elements = Object.entries(schemaObj.properties).map(([key, prop]) => {
           const newPath = path ? `${path}/${key}` : `#/properties/${key}`;
@@ -780,7 +781,7 @@ export default function Home() {
     return {
       type: 'VerticalLayout',
       elements: rootElements
-    };
+    } as UISchemaElement;
   }, [forms]);
 
   return (
