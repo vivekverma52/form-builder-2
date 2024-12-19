@@ -319,13 +319,49 @@ export default function Home() {
       key: newKey
     };
 
-    setCurrentForms(
-      getCurrentForms().map(form => 
-        form.key === updatedForm.key ? formWithNewKey : form
-      )
-    );
+    // Recursively update forms and their elements
+    const updateNestedForms = (form: FormField): FormField => {
+      if (form.key === updatedForm.key) {
+        return formWithNewKey;
+      }
+
+      const updatedElements = form.elements.map(element => {
+        if (element.type === 'object' && element.properties?.form) {
+          const nestedForm = element.properties.form as FormField;
+          const updatedNestedForm = updateNestedForms(nestedForm);
+          
+          if (updatedNestedForm !== nestedForm) {
+            return {
+              ...element,
+              label: updatedNestedForm.label,
+              key: updatedNestedForm.key,
+              properties: {
+                ...element.properties,
+                form: updatedNestedForm
+              }
+            };
+          }
+        }
+        return element;
+      });
+
+      return {
+        ...form,
+        elements: updatedElements
+      };
+    };
+
+    // Update forms
+    const updatedForms = forms.map(form => updateNestedForms(form));
+    setForms(updatedForms);
+
+    // Update currentPath if the updated form is in the path
+    setCurrentPath(currentPath.map(pathForm => 
+      pathForm.key === updatedForm.key ? formWithNewKey : pathForm
+    ));
+
     setEditingForm(null);
-  }, [getCurrentForms, setCurrentForms]);
+  }, [forms, currentPath]);
 
   const updateElement = useCallback((form: FormField, updatedElement: FormElement): void => {
     form.elements = form.elements.map(element =>
@@ -333,7 +369,7 @@ export default function Home() {
     );
     setForms([...forms]);
     setEditingElement(null);
-  }, [forms]);
+  }, [forms, editingElement]);
 
   const deleteForm = useCallback((key: string): void => {
     if (currentPath.length === 0) {
