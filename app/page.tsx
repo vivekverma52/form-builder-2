@@ -1,6 +1,6 @@
 'use client';
 
-import { JsonFormsCellRendererRegistryEntry, JsonFormsRendererRegistryEntry, JsonSchema7 } from '@jsonforms/core'
+import { JsonFormsCellRendererRegistryEntry, JsonFormsRendererRegistryEntry, JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import {
   AddCircle as AddCircleIcon,
   Add as AddIcon,
@@ -34,7 +34,6 @@ import { createTheme, ThemeProvider } from '@mui/material/styles'
 import dynamic from 'next/dynamic'
 import React, { useCallback, useEffect, useState } from 'react'
 import { adjectives, colors, Config, uniqueNamesGenerator } from 'unique-names-generator'
-import { UISchemaElement } from '@jsonforms/core';
 
 // Add proper types for JsonForms props
 interface JsonFormsProps {
@@ -351,14 +350,16 @@ export default function Home() {
       };
     };
 
-    // Update forms
     const updatedForms = forms.map(form => updateNestedForms(form));
     setForms(updatedForms);
 
-    // Update currentPath if the updated form is in the path
-    setCurrentPath(currentPath.map(pathForm => 
-      pathForm.key === updatedForm.key ? formWithNewKey : pathForm
-    ));
+    // Update currentPath if the edited form is in the path
+    setCurrentPath(currentPath.map(pathForm => {
+      if (pathForm.key === updatedForm.key) {
+        return formWithNewKey;
+      }
+      return updateNestedForms(pathForm);
+    }));
 
     setEditingForm(null);
   }, [forms, currentPath]);
