@@ -164,6 +164,12 @@ const generateElementName = (type: ElementType | FormType): { label: string, key
   return { label, key };
 };
 
+const generateRandomHex = (): string => {
+  const randomPart = Math.random().toString(16).substring(2, 8);
+  const timestamp = Date.now().toString(16);
+  return `${randomPart}-${timestamp}`;
+};
+
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [renderers, setRenderers] = useState<JsonFormsRendererRegistryEntry[]>([]);
@@ -276,7 +282,8 @@ export default function Home() {
 
   const addElement = useCallback((form: FormField): void => {
     if (selectedElementType === 'object') {
-      const { label, key } = generateElementName('object' as ElementType);
+      const { label } = generateElementName('object' as ElementType);
+      const key = generateRandomHex();
       const newForm: FormField = {
         type: 'VerticalLayout',
         formType: 'group',
@@ -298,7 +305,8 @@ export default function Home() {
       setForms([...forms]);
       navigateToForm(newForm);
     } else {
-      const { label, key } = generateElementName(selectedElementType);
+      const { label } = generateElementName(selectedElementType);
+      const key = generateRandomHex();
       const newElement: FormElement = {
         type: selectedElementType,
         label,
