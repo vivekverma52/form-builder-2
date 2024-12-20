@@ -259,7 +259,6 @@ export default function Home() {
       key,
       elements: [],
       parent: currentPath[currentPath.length - 1],
-      layout: 'vertical'
     };
 
     if (currentPath.length === 0) {
@@ -919,7 +918,7 @@ export default function Home() {
                           size="small"
                           fullWidth
                         />
-                        {editingForm.formType === 'array' && (
+                        {/* {editingForm.formType === 'array' && (
                           <FormControl size="small" fullWidth>
                             <InputLabel>Layout</InputLabel>
                             <Select
@@ -931,7 +930,7 @@ export default function Home() {
                               <MenuItem value="horizontal">Horizontal</MenuItem>
                             </Select>
                           </FormControl>
-                        )}
+                        )} */}
                         <Stack direction="row" spacing={1}>
                           <Button
                             variant="contained"
