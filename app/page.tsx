@@ -1,5 +1,4 @@
 'use client';
-
 import { JsonFormsCellRendererRegistryEntry, JsonFormsRendererRegistryEntry, JsonSchema7, UISchemaElement } from '@jsonforms/core'
 import {
   AddCircle as AddCircleIcon,
@@ -65,16 +64,10 @@ const JsonFormsComponent = dynamic<JsonFormsProps>(
   { ssr: false }
 );
 
-// Add proper types for renderers and cells
-// type MaterialRenderer = any; // Replace with proper type from @jsonforms/material-renderers if available
-// type MaterialCell = any; // Replace with proper type from @jsonforms/material-renderers if available
-
-
-
 // Form types
 type FormLayoutType = 'VerticalLayout' | 'HorizontalLayout' | 'Group' | 'Control';
 type FormType = 'simple' | 'array' | 'group';
-type ElementType = 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
+type ElementType = 'string' | 'number' | 'boolean' | 'date' | 'time' | 'object' | 'array' | 'dropdown';
 
 interface FormElement {
   type: ElementType;
@@ -84,6 +77,7 @@ interface FormElement {
   properties?: {
     form?: FormField;
     type?: string;
+    options?: string[];
     [key: string]: unknown;
   };
 }
@@ -105,6 +99,7 @@ interface SchemaObject {
   items?: SchemaObject;
   required?: string[];
   format?: string;
+  enum?: string[];
 }
 
 interface CustomJsonSchema extends JsonSchema7 {
@@ -112,28 +107,12 @@ interface CustomJsonSchema extends JsonSchema7 {
   required: string[];
 }
 
-// Update UISchemaElement type to include our custom properties
-// interface ExtendedUISchemaElement extends UISchemaElement {
-//   type: string;
-//   scope?: string;
-//   options?: {
-//     detail?: {
-//       type: string;
-//       elements: ExtendedUISchemaElement[];
-//     };
-//   };
-//   elements?: ExtendedUISchemaElement[];
-// }
-
-// interface CustomUISchema extends ExtendedUISchemaElement {
-//   elements: ExtendedUISchemaElement[];
-// }
-
 interface FormChangeEvent {
   data: Record<string, unknown>;
   errors: Array<{
     instancePath: string;
     message?: string;
+    
     schemaPath: string;
     keyword: string;
     params: Record<string, unknown>;
@@ -156,7 +135,7 @@ const generateElementName = (type: ElementType | FormType): { label: string, key
     style: 'capital'
   };
   const baseName = uniqueNamesGenerator(config);
-  const typeLabel = type === 'simple' || type === 'array' || type === 'group' 
+  const typeLabel = type === 'simple' || type === 'array' || type === 'group'
     ? 'Form'
     : type.charAt(0).toUpperCase() + type.slice(1);
   const label = `${baseName} ${typeLabel}`;
@@ -194,10 +173,6 @@ export default function Home() {
     });
   }, []);
 
-  // const generateKey = useCallback((prefix: string): string => {
-  //   return generateUniqueKey(prefix);
-  // }, []);
-
   const navigateToForm = useCallback((form: FormField): void => {
     setCurrentPath([...currentPath, form]);
   }, [currentPath]);
@@ -208,47 +183,19 @@ export default function Home() {
 
   const getCurrentForms = useCallback((): FormField[] => {
     if (currentPath.length === 0) return forms;
-    
+
     // Get the last form in the path
     const lastForm = currentPath[currentPath.length - 1];
-    
+
     // If it's a nested form, return its elements that are forms
     if (lastForm.formType === 'array' || lastForm.formType === 'group') {
       return lastForm.elements
         .filter(el => el.type === 'object' && el.properties?.form)
         .map(el => el.properties?.form as FormField);
     }
-    
+
     return [];
   }, [currentPath, forms]);
-
-  // const setCurrentForms = useCallback((newForms: FormField[]): void => {
-  //   if (currentPath.length === 0) {
-  //     setForms(newForms);
-  //     return;
-  //   }
-
-  //   // Get the last form in the path
-  //   const lastForm = currentPath[currentPath.length - 1];
-    
-  //   // Convert FormFields to FormElements
-  //   const newElements = lastForm.elements.map(element => {
-  //     if (element.type === 'object' && element.properties?.form) {
-  //       const form = element.properties.form;
-  //       const updatedForm = newForms.find(newForm => newForm.key === form?.key);
-  //       if (updatedForm) {
-  //         return {
-  //           ...element,
-  //           properties: { ...element.properties, form: updatedForm }
-  //         };
-  //       }
-  //     }
-  //     return element;
-  //   });
-    
-  //   lastForm.elements = newElements;
-  //   setForms([...forms]);
-  // }, [currentPath, forms]);
 
   const addForm = useCallback((): void => {
     const { label, key } = generateElementName(selectedType);
@@ -303,6 +250,21 @@ export default function Home() {
       form.elements = [...form.elements, newElement];
       setForms([...forms]);
       navigateToForm(newForm);
+    } else if (selectedElementType === 'dropdown') {
+      const { label } = generateElementName(selectedElementType);
+      const key = generateRandomHex();
+      const newElement: FormElement = {
+        type: 'dropdown',
+        label,
+        key,
+        required: false,
+        properties: {
+          options: []
+        }
+      };
+      form.elements = [...form.elements, newElement];
+      setForms([...forms]);
+      setEditingElement(newElement);
     } else {
       const { label } = generateElementName(selectedElementType);
       const key = generateRandomHex();
@@ -335,7 +297,7 @@ export default function Home() {
         if (element.type === 'object' && element.properties?.form) {
           const nestedForm = element.properties.form as FormField;
           const updatedNestedForm = updateNestedForms(nestedForm);
-          
+
           if (updatedNestedForm !== nestedForm) {
             return {
               ...element,
@@ -384,7 +346,7 @@ export default function Home() {
       setForms(forms.filter(form => form.key !== key));
     } else {
       const lastForm = currentPath[currentPath.length - 1];
-      lastForm.elements = lastForm.elements.filter(el => 
+      lastForm.elements = lastForm.elements.filter(el =>
         !(el.type === 'object' && el.properties?.form?.key === key)
       );
       setForms([...forms]);
@@ -425,6 +387,28 @@ export default function Home() {
             format: 'date',
             title: element.label
           };
+        } else if (element.type === 'time') {
+          // For time types, use string type with time format
+          acc[element.key] = {
+            type: 'string',
+            format: 'time',
+            title: element.label
+          };
+        } else if (element.type === 'dropdown') {
+          // For dropdown types, use string type with enum
+          const options = element.properties?.options || [];
+          if (options.length > 0) {
+            acc[element.key] = {
+              type: 'string',
+              title: element.label,
+              enum: options
+            };
+          } else {
+            acc[element.key] = {
+              type: 'string',
+              title: element.label
+            };
+          }
         } else {
           acc[element.key] = {
             type: element.type,
@@ -440,7 +424,7 @@ export default function Home() {
       const required = form.elements
         .filter(el => el.required)
         .map(el => el.key);
-      
+
       return {
         type: 'object',
         title: form.label,
@@ -452,7 +436,7 @@ export default function Home() {
       const required = form.elements
         .filter(el => el.required)
         .map(el => el.key);
-      
+
       return {
         type: 'array',
         title: form.label,
@@ -463,7 +447,7 @@ export default function Home() {
         }
       };
     }
-    
+
     return {
       type: 'object',
       properties: {}
@@ -492,13 +476,13 @@ export default function Home() {
       }
 
       const formSchema = generateFormSchema(form);
-      
+
       // If this is a nested form, add it to its parent's properties
       if (parentPath) {
         // Split the parent path to navigate the schema
         const pathParts = parentPath.split('.');
         let currentObj: Record<string, SchemaObject> = schema.properties;
-        
+
         // Navigate to the correct location in the schema
         for (let i = 0; i < pathParts.length; i++) {
           const part = pathParts[i];
@@ -651,7 +635,7 @@ export default function Home() {
                 scope: cleanScopePath(`#/properties/${propKey}`),
                 options: {
                   detail: {
-                    type: 'VerticalLayout',
+                    type: 'Group',
                     elements: getSimpleFormElements(propValue.properties)
                   }
                 }
@@ -677,7 +661,7 @@ export default function Home() {
                     scope: cleanScopePath(`#/properties/${nestedKey}`),
                     options: {
                       detail: {
-                        type: 'VerticalLayout',
+                        type: 'Group',
                         elements: getSimpleFormElements(nestedValue.properties)
                       }
                     }
@@ -698,12 +682,15 @@ export default function Home() {
                 scope: cleanScopePath(`#/properties/${nestedKey}`)
               };
             });
+            // Dynamically access the title of the nested object within the properties
+            const nestedObjectTitle = Object.values(propValue.properties).find(prop => prop.type === 'object')?.title;
             return {
               type: 'Control',
               scope: cleanScopePath(`#/properties/${propKey}`),
               options: {
                 detail: {
-                  type: 'VerticalLayout',
+                  type: 'Group',
+                  label: nestedObjectTitle,
                   elements: nestedElements
                 }
               }
@@ -804,7 +791,7 @@ export default function Home() {
       .map(([key, prop]) => {
         const path = `#/properties/${key}`;
         const form = forms.find(f => f.key === key);
-        
+
         if (prop.type === 'array') {
           return processArrays(prop, path, form);
         }
@@ -918,19 +905,6 @@ export default function Home() {
                           size="small"
                           fullWidth
                         />
-                        {/* {editingForm.formType === 'array' && (
-                          <FormControl size="small" fullWidth>
-                            <InputLabel>Layout</InputLabel>
-                            <Select
-                              value={editingForm.layout || 'vertical'}
-                              label="Layout"
-                              onChange={(e) => setEditingForm({...editingForm, layout: e.target.value as 'vertical' | 'horizontal'})}
-                            >
-                              <MenuItem value="vertical">Vertical</MenuItem>
-                              <MenuItem value="horizontal">Horizontal</MenuItem>
-                            </Select>
-                          </FormControl>
-                        )} */}
                         <Stack direction="row" spacing={1}>
                           <Button
                             variant="contained"
@@ -978,9 +952,11 @@ export default function Home() {
                                 <MenuItem value="number">Number</MenuItem>
                                 <MenuItem value="boolean">Boolean</MenuItem>
                                 <MenuItem value="date">Date</MenuItem>
+                                <MenuItem value="time">Time</MenuItem>
                                 {(form.formType === 'array' || form.formType === 'group') && (
                                   <MenuItem value="object">Nested Form</MenuItem>
                                 )}
+                                <MenuItem value="dropdown">Dropdown</MenuItem>
                               </Select>
                             </FormControl>
                             <Button
@@ -1047,6 +1023,21 @@ export default function Home() {
                                           }
                                           label="Required"
                                         />
+                                        {editingElement.type === 'dropdown' && (
+                                          <TextField
+                                            label="Options (comma-separated)"
+                                            value={(editingElement.properties?.options || []).join(', ')}
+                                            onChange={(e) => setEditingElement({
+                                              ...editingElement,
+                                              properties: {
+                                                ...editingElement.properties,
+                                                options: e.target.value.split(',').map(option => option.trim())
+                                              }
+                                            })}
+                                            size="small"
+                                            fullWidth
+                                          />
+                                        )}
                                         <Stack direction="row" spacing={1}>
                                           <Button
                                             variant="contained"
@@ -1065,11 +1056,11 @@ export default function Home() {
                                       </Stack>
                                     ) : (
                                       <Box display="flex" justifyContent="space-between" alignItems="center">
-                                        <Box 
+                                        <Box
                                           onClick={() => element.type === 'object' && handleElementClick(element)}
-                                          sx={{ 
+                                          sx={{
                                             cursor: element.type === 'object' ? 'pointer' : 'default',
-                                            '&:hover': element.type === 'object' ? { 
+                                            '&:hover': element.type === 'object' ? {
                                               color: 'primary.main',
                                               '& .MuiChip-root': {
                                                 borderColor: 'primary.main',
@@ -1085,11 +1076,11 @@ export default function Home() {
                                               {element.label}
                                             </Typography>
                                             {element.type === 'object' && (
-                                              <Typography 
-                                                variant="caption" 
+                                              <Typography
+                                                variant="caption"
                                                 color="text.secondary"
-                                                sx={{ 
-                                                  display: 'flex', 
+                                                sx={{
+                                                  display: 'flex',
                                                   alignItems: 'center',
                                                   '& svg': { fontSize: 16, ml: 0.5 }
                                                 }}
@@ -1228,4 +1219,3 @@ export default function Home() {
     </ThemeProvider>
   );
 }
-
